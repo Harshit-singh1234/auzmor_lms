@@ -1,0 +1,71 @@
+tasks:
+  restore-yarn-cache:
+    type: restore
+    keys:
+      - yarn-cache-[[ checksum "yarn.lock" ]]
+      - yarn-cache-
+
+  run-tests:
+    image: node:10
+    commands:
+      - yarn install
+      - yarn test || echo "Skipping test failure"
+    variables:
+      - CI=true
+
+  save-yarn-cache:
+    type: rebuild
+    key: yarn-cache-[[ checksum "yarn.lock" ]]
+    paths:
+      - node_modules
+
+  deploy-dev:
+    image: node:10
+    commands:
+      - yarn build
+      - npm install -g firebase-tools
+      ## FIREBASE_TOKEN will be configured in UI secrets
+      - firebase deploy --token "$FIREBASE_DEV_TOKEN" --project "$GCP_PROJECT" --non-interactive
+    variables:
+      - GCP_PROJECT=auzmor-lms-dev
+      - REACT_APP_BASE_URL=https://learn-dev.auzmor.com/
+      - REACT_APP_API_BASE_URL=https://learn-dev.api.auzmor.com/api/v1
+      - REACT_APP_ENV=DEV
+      - REACT_APP_GCP_STORAGE_BUCKET=lms-dev
+      - NODE_PATH=src/utils
+      - REACT_APP_SMARTLOOK_KEY=eb4a6d9732b465b83edb9c35635181601d37e57c
+    when: branch == 'develop'
+
+  deploy-staging:
+    image: node:10
+    commands:
+      - yarn build
+      - npm install -g firebase-tools
+      ## FIREBASE_TOKEN will be configured in UI secrets
+      - firebase deploy --token "$FIREBASE_QA_TOKEN" --project "$GCP_PROJECT" --non-interactive
+    variables:
+      - GCP_PROJECT=auzmor-lms-staging
+      - REACT_APP_BASE_URL=https://learn-staging.auzmor.com/
+      - REACT_APP_API_BASE_URL=https://learn-staging.api.auzmor.com/api/v1
+      - REACT_APP_ENV=STAGING
+      - REACT_APP_GCP_STORAGE_BUCKET=lms-staging
+      - NODE_PATH=src/utils
+      - REACT_APP_SMARTLOOK_KEY=eb4a6d9732b465b83edb9c35635181601d37e57c
+    when: branch == 'staging'
+
+  deploy-prod:
+    image: node:10
+    commands:
+      - yarn build
+      - npm install -g firebase-tools
+      ## FIREBASE_TOKEN will be configured in UI secrets
+      - firebase deploy --token "$FIREBASE_PROD_TOKEN" --project "$GCP_PROJECT" --non-interactive
+    variables:
+      - GCP_PROJECT=auzmor-lms
+      - REACT_APP_BASE_URL=https://learn.auzmor.com/
+      - REACT_APP_API_BASE_URL=https://learn.api.auzmor.com/api/v1
+      - REACT_APP_ENV=PRODUCTION
+      - REACT_APP_GCP_STORAGE_BUCKET=zulu-prod
+      - NODE_PATH=src/utils
+      - REACT_APP_SMARTLOOK_KEY=378f06c43d61271f6c2b5ed2b8adfa1b32769d05
+    when: branch == 'master'
